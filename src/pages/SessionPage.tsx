@@ -55,11 +55,24 @@ const SessionPage: React.FC = () => {
 
     if (
       window.confirm(
-        "本当にセッションをリセットしますか？全てのカードの選択状態がリセットされます。"
+        "本当にセッションをリセットしますか？すべてのカードが削除されます。"
       )
     ) {
       try {
-        await resetSession();
+        // セッション名の入力を求める
+        const newSessionName = prompt(
+          "新しいセッション名を入力してください",
+          session?.name
+        );
+
+        // キャンセルした場合は処理中止
+        if (newSessionName === null) return;
+
+        // 空の場合は元の名前を使用
+        const finalSessionName =
+          newSessionName?.trim() || session?.name || "新しいセッション";
+
+        await resetSession(finalSessionName);
       } catch (err) {
         setLocalError(
           err instanceof Error ? err.message : "予期せぬエラーが発生しました"
@@ -74,7 +87,7 @@ const SessionPage: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yamunabe-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-dark-pot-500 mx-auto mb-4"></div>
           <p className="text-slate-400">読み込み中...</p>
         </div>
       </div>
@@ -110,7 +123,7 @@ const SessionPage: React.FC = () => {
       {/* ヘッダー */}
       <header className="bg-slate-800 p-4 shadow-md">
         <div className="max-w-6xl mx-auto flex flex-wrap justify-between items-center">
-          <h1 className="text-2xl font-bold text-yamunabe-500">
+          <h1 className="text-2xl font-bold text-dark-pot-500">
             {session?.name}
             <span className="ml-2 text-sm text-slate-400">
               #{sessionId?.substring(0, 8)}
@@ -160,7 +173,7 @@ const SessionPage: React.FC = () => {
                   <span className="text-green-400 ml-2">募集中</span>
                 )}
                 {session?.status === "picking" && (
-                  <span className="text-yamunabe-500 ml-2">抽選中</span>
+                  <span className="text-dark-pot-500 ml-2">抽選中</span>
                 )}
                 {session?.status === "finished" && (
                   <span className="text-blue-400 ml-2">完了</span>
@@ -184,7 +197,7 @@ const SessionPage: React.FC = () => {
                     session?.status === "finished" ||
                     unselectedCards.length === 0
                   }
-                  className="py-2 px-4 bg-yamunabe-500 hover:bg-yamunabe-600 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-medium rounded"
+                  className="py-2 px-4 bg-dark-pot-500 hover:bg-dark-pot-600 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-medium rounded"
                 >
                   トピックを抽選
                 </button>
@@ -193,7 +206,7 @@ const SessionPage: React.FC = () => {
                   onClick={handleResetSession}
                   className="py-2 px-4 bg-slate-700 hover:bg-slate-600 rounded"
                 >
-                  リセット
+                  新しいセッション
                 </button>
               </div>
             )}
@@ -207,16 +220,14 @@ const SessionPage: React.FC = () => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-yamunabe-500 text-slate-900 rounded-lg p-6 mb-6 shadow-lg"
+              className="bg-dark-pot-500 text-slate-900 rounded-lg p-6 mb-6 shadow-lg"
             >
               <h3 className="text-lg font-semibold mb-2">現在のトピック</h3>
               <div className="bg-white rounded-lg p-6 text-lg shadow-inner">
                 {selectedCard.content}
               </div>
               <div className="mt-4 text-sm flex justify-end">
-                <div className="flex items-center">
-                  投稿者: {selectedCard.authorName}
-                </div>
+                <div className="flex items-center">投稿者: 匿名</div>
               </div>
             </motion.div>
           )}

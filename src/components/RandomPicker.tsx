@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, Participant } from "../types";
 
 interface RandomPickerProps {
@@ -9,11 +9,7 @@ interface RandomPickerProps {
   onClose: () => void;
 }
 
-const RandomPicker: React.FC<RandomPickerProps> = ({
-  cards,
-  selectedCard,
-  onClose,
-}) => {
+const RandomPicker = ({ cards, selectedCard, onClose }: RandomPickerProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [speed, setSpeed] = useState(100);
   const [showResult, setShowResult] = useState(false);
@@ -63,13 +59,6 @@ const RandomPicker: React.FC<RandomPickerProps> = ({
     return null;
   };
 
-  // 投稿者の名前を取得
-  const getAuthorName = (authorId: string): string => {
-    return (
-      cards.find((card) => card.authorId === authorId)?.authorName || "不明"
-    );
-  };
-
   const currentCard = getCurrentCard();
 
   return (
@@ -112,7 +101,7 @@ const RandomPicker: React.FC<RandomPickerProps> = ({
                   transition={{ delay: 0.5 }}
                   className="text-sm text-slate-600 text-right mt-4"
                 >
-                  投稿者: {getAuthorName(currentCard.authorId)}
+                  投稿者: 匿名
                 </motion.div>
               )}
             </motion.div>

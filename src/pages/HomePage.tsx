@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePeer } from "../contexts/PeerContext";
 
@@ -14,24 +14,26 @@ export const HomePage = () => {
 
   const navigate = useNavigate();
 
-  // セッション作成ハンドラ
-  const handleCreateSession = async () => {
-    setLocalError(null);
+  const handleCreateSession = useCallback(async () => {
+    if (!sessionName) {
+      setLocalError("セッション名を入力してください");
+      return;
+    }
 
+    setLocalError(null);
+    console.log("testA");
     try {
       const sessionId = await createSession(sessionName);
       navigate(`/session/${sessionId}`);
     } catch (err) {
       setLocalError(
-        err instanceof Error
-          ? err.message
-          : "An unexpected error has occurred..."
+        err instanceof Error ? err.message : "予期せぬエラーが発生しました"
       );
     }
-  };
+  }, [createSession, navigate, sessionName]);
 
   // セッション参加ハンドラ
-  const handleJoinSession = async () => {
+  const handleJoinSession = useCallback(async () => {
     if (!joinSessionId) {
       setLocalError("セッションIDを入力してください");
       return;
@@ -47,7 +49,7 @@ export const HomePage = () => {
         err instanceof Error ? err.message : "予期せぬエラーが発生しました"
       );
     }
-  };
+  }, [joinSession, joinSessionId, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -62,7 +64,7 @@ export const HomePage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="text-4xl font-bold text-center mb-2 text-yamunabe-500"
+            className="text-4xl font-bold text-center mb-2 text-dark-pot-500"
           >
             闇鍋レトロスペクティブ
           </motion.h1>
@@ -94,7 +96,7 @@ export const HomePage = () => {
               {!isCreating ? (
                 <button
                   onClick={() => setIsCreating(true)}
-                  className="w-full py-2 px-4 bg-yamunabe-500 hover:bg-yamunabe-600 text-white font-medium rounded-md transition-colors"
+                  className="w-full py-2 px-4 bg-dark-pot-500 hover:bg-dark-pot-600 text-white font-medium rounded-md transition-colors"
                 >
                   セッションを作成
                 </button>
@@ -102,27 +104,14 @@ export const HomePage = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm text-slate-300 mb-1">
-                      あなたの名前
-                    </label>
-                    <input
-                      type="text"
-                      value={userName}
-                      onChange={(e) => setUserName(e.target.value)}
-                      placeholder="名前を入力"
-                      className="w-full p-2 bg-slate-800 border border-slate-600 rounded-md focus:ring-2 focus:ring-yamunabe-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-slate-300 mb-1">
-                      セッション名 (任意)
+                      セッション名
                     </label>
                     <input
                       type="text"
                       value={sessionName}
                       onChange={(e) => setSessionName(e.target.value)}
                       placeholder="例: チームAレトロスペクティブ"
-                      className="w-full p-2 bg-slate-800 border border-slate-600 rounded-md focus:ring-2 focus:ring-yamunabe-500 focus:border-transparent outline-none"
+                      className="w-full p-2 bg-slate-800 border border-slate-600 rounded-md focus:ring-2 focus:ring-dark-pot-500 focus:border-transparent outline-none"
                     />
                   </div>
 
@@ -135,8 +124,8 @@ export const HomePage = () => {
                     </button>
                     <button
                       onClick={handleCreateSession}
-                      disabled={loading || !userName}
-                      className="flex-1 py-2 px-4 bg-yamunabe-500 hover:bg-yamunabe-600 disabled:bg-slate-500 disabled:cursor-not-allowed text-white font-medium rounded-md"
+                      disabled={loading || !sessionName}
+                      className="flex-1 py-2 px-4 bg-dark-pot-500 hover:bg-dark-pot-600 disabled:bg-slate-500 disabled:cursor-not-allowed text-white font-medium rounded-md"
                     >
                       {loading ? "お待ちください..." : "作成"}
                     </button>
@@ -165,19 +154,6 @@ export const HomePage = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm text-slate-300 mb-1">
-                      あなたの名前
-                    </label>
-                    <input
-                      type="text"
-                      value={userName}
-                      onChange={(e) => setUserName(e.target.value)}
-                      placeholder="名前を入力"
-                      className="w-full p-2 bg-slate-800 border border-slate-600 rounded-md focus:ring-2 focus:ring-yamunabe-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-slate-300 mb-1">
                       セッションID
                     </label>
                     <input
@@ -185,7 +161,7 @@ export const HomePage = () => {
                       value={joinSessionId}
                       onChange={(e) => setJoinSessionId(e.target.value)}
                       placeholder="ホストから共有されたID"
-                      className="w-full p-2 bg-slate-800 border border-slate-600 rounded-md focus:ring-2 focus:ring-yamunabe-500 focus:border-transparent outline-none"
+                      className="w-full p-2 bg-slate-800 border border-slate-600 rounded-md focus:ring-2 focus:ring-dark-pot-500 focus:border-transparent outline-none"
                     />
                   </div>
 
@@ -198,7 +174,7 @@ export const HomePage = () => {
                     </button>
                     <button
                       onClick={handleJoinSession}
-                      disabled={loading || !userName || !joinSessionId}
+                      disabled={loading || !joinSessionId}
                       className="flex-1 py-2 px-4 bg-slate-600 hover:bg-slate-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-medium rounded-md"
                     >
                       {loading ? "お待ちください..." : "参加"}
@@ -211,7 +187,7 @@ export const HomePage = () => {
         </div>
 
         <div className="bg-slate-900 p-4 text-center text-slate-500 text-sm">
-          © 2025 闇鍋レトロスペクティブツール
+          © 2025 Dark Pot Retrospective Tool
         </div>
       </motion.div>
     </div>

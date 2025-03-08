@@ -68,7 +68,6 @@ export function PeerProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // ユーザー情報が変更されたらローカルストレージに保存
   useEffect(() => {
     if (user) {
       localStorage.setItem("dark-pot-user", JSON.stringify(user));
@@ -92,7 +91,6 @@ export function PeerProvider({ children }: { children: ReactNode }) {
       setError("ピア接続エラー: " + err.message);
     });
 
-    // 新規接続を受け付ける（ホストの場合）
     if (user.isHost) {
       newPeer.on("connection", handleNewConnection);
     }
@@ -328,23 +326,52 @@ export function PeerProvider({ children }: { children: ReactNode }) {
     }
 
     return new Promise((resolve, reject) => {
-      const conn = peer.connect(hostId);
+      try {
+        console.log(`Attempting to connect to host: ${hostId}`);
+        const conn = peer.connect(hostId, {
+          reliable: true,
+          serialization: "json",
+        });
 
-      conn.on("open", () => {
-        // 接続リストに追加
-        setConnections((prev) => [...prev, conn]);
-        setupConnectionHandlers(conn);
-        resolve(conn);
-      });
+        if (!conn) {
+          reject(new Error("Connection failed to establish"));
+          return;
+        }
 
-      conn.on("error", (err) => {
+        let connectionOpened = false;
+
+        conn.on("open", () => {
+          console.log("Connection opened successfully");
+          connectionOpened = true;
+          setConnections((prev) => [...prev, conn]);
+          setupConnectionHandlers(conn);
+          resolve(conn);
+        });
+
+        conn.on("error", (err) => {
+          console.error("Connection error:", err);
+          if (!connectionOpened) {
+            reject(err);
+          }
+        });
+
+        // タイムアウト処理
+        setTimeout(() => {
+          if (!connectionOpened) {
+            console.error("Connection timed out");
+            reject(new Error("Connection timed out"));
+          }
+        }, 10000); // 10秒タイムアウト
+      } catch (err) {
+        console.error("Error in connection attempt:", err);
         reject(err);
-      });
+      }
     });
   };
 
   const createSession = async (sessionName: string): Promise<string> => {
-    if (!session) {
+    console.log({ sessionName });
+    if (!sessionName) {
       throw new Error("Require session name.");
     }
 
@@ -353,7 +380,7 @@ export function PeerProvider({ children }: { children: ReactNode }) {
 
     try {
       const sessionId = nanoid(10);
-      const userId = nanoid(10);
+      const userId = nanoid(10) + Date.now().toString();
       const timestamp = new Date().toISOString();
 
       const newSession: Session = {
@@ -417,15 +444,30 @@ export function PeerProvider({ children }: { children: ReactNode }) {
 
       // ホストとの接続を確立（PeerJSの初期化を待つ）
       const waitForPeer = async (): Promise<Peer> => {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
           if (peer) {
             resolve(peer);
           } else {
-            const newPeer = new Peer(userId);
-            newPeer.on("open", () => {
-              setPeer(newPeer);
-              resolve(newPeer);
-            });
+            try {
+              const newPeer = new Peer(userId, {
+                debug: 3, // デバッグレベルを最大に
+                config: {
+                  iceServers: [
+                    { urls: "stun:stun.l.google.com:19302" },
+                    { urls: "stun:global.stun.twilio.com:3478" },
+                  ],
+                },
+              });
+              newPeer.on("open", () => {
+                setPeer(newPeer);
+                resolve(newPeer);
+              });
+              newPeer.on("error", (err) => {
+                reject(err);
+              });
+            } catch (err) {
+              reject(err);
+            }
           }
         });
       };

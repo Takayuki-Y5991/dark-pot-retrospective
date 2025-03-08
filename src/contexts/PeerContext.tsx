@@ -1,5 +1,9 @@
+import {
+  createClient,
+  RealtimeChannel,
+  SupabaseClient,
+} from "@supabase/supabase-js";
 import { nanoid } from "nanoid";
-import Peer, { DataConnection } from "peerjs";
 import {
   createContext,
   ReactNode,
@@ -23,6 +27,16 @@ import {
   User,
 } from "../types";
 
+// Supabase connection setup
+// Replace with your Supabase URL and anon key
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+
+const generateUniqueId = (): string => {
+  // ランダムな文字列 + タイムスタンプ + ランダムな数値
+  return nanoid(6) + "_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+};
+
 interface PeerContextType {
   user: User | null;
   setUser: (user: User | null) => void;
@@ -44,8 +58,10 @@ interface PeerContextType {
 const PeerContext = createContext<PeerContextType | undefined>(undefined);
 
 export function PeerProvider({ children }: { children: ReactNode }) {
-  const [peer, setPeer] = useState<Peer | null>(null);
-  const [connections, setConnections] = useState<DataConnection[]>([]);
+  const [supabase] = useState<SupabaseClient>(() =>
+    createClient(supabaseUrl, supabaseAnonKey)
+  );
+  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -77,131 +93,110 @@ export function PeerProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !session) return;
 
-    const newPeer = new Peer(user.id);
-
-    newPeer.on("open", (id) => {
-      console.log("My peer ID is:", id);
-      setPeer(newPeer);
+    // Setup Supabase real-time channel
+    const newChannel = supabase.channel(`session:${session.id}`, {
+      config: { broadcast: { self: false } },
     });
 
-    newPeer.on("error", (err) => {
-      console.error("Peer connection error:", err);
-      setError("ピア接続エラー: " + err.message);
-    });
-
-    if (user.isHost) {
-      newPeer.on("connection", handleNewConnection);
-    }
-
-    return () => {
-      connections.forEach((conn) => conn.close());
-      newPeer.destroy();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  const handleNewConnection = (conn: DataConnection) => {
-    console.log("New connection from:", conn.peer);
-
-    setConnections((prev) => [...prev, conn]);
-
-    setupConnectionHandlers(conn);
-  };
-
-  const setupConnectionHandlers = (conn: DataConnection) => {
-    conn.on("open", () => {
-      console.log("Connection opened with:", conn.peer);
-    });
-
-    conn.on("data", (data) => {
-      handleIncomingMessage(conn, data as Message);
-    });
-
-    conn.on("close", () => {
-      console.log("Connection closed with:", conn.peer);
-
-      setConnections((prev) => prev.filter((c) => c.peer !== conn.peer));
-
-      if (user?.isHost) {
-        const participantId = conn.peer;
+    // Handle incoming messages based on type
+    newChannel
+      .on("broadcast", { event: "JOIN_REQUEST" }, ({ payload }) => {
+        if (user.isHost) {
+          handleJoinRequest(payload.senderId);
+        }
+      })
+      .on("broadcast", { event: "JOIN_ACCEPTED" }, ({ payload }) => {
+        handleJoinAccepted(payload as JoinAcceptedMessage);
+      })
+      .on("broadcast", { event: "PARTICIPANT_JOINED" }, ({ payload }) => {
+        handleParticipantJoined(payload as ParticipantJoinedMessage);
+      })
+      .on("broadcast", { event: "PARTICIPANT_LEFT" }, ({ payload }) => {
+        const { participantId } = payload.data;
         setParticipants((prev) => prev.filter((p) => p.id !== participantId));
+      })
+      .on("broadcast", { event: "CARD_ADDED" }, ({ payload }) => {
+        handleCardAdded(payload as CardAddedMessage);
+      })
+      .on("broadcast", { event: "CARD_SELECTED" }, ({ payload }) => {
+        handleCardSelected(payload as CardSelectedMessage);
+      })
+      .on("broadcast", { event: "SESSION_RESET" }, () => {
+        handleSessionReset();
+      })
+      .on("broadcast", { event: "SESSION_STATE" }, ({ payload }) => {
+        handleSessionState(payload as SessionStateMessage);
+      })
+      .on("broadcast", { event: "SESSION_NEW" }, ({ payload }) => {
+        handleSessionNew(payload as SessionNewMessage);
+      });
 
-        broadcastToAll({
-          type: "PARTICIPANT_LEFT",
-          senderId: user.id,
-          timestamp: new Date().toISOString(),
-          data: { participantId },
-        });
+    // Subscribe to the channel
+    newChannel.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        console.log(`Subscribed to session channel: ${session.id}`);
+        setChannel(newChannel);
+
+        // If not host, send join request
+        if (!user.isHost) {
+          sendJoinRequest();
+        }
       }
     });
 
-    conn.on("error", (err) => {
-      console.error("Connection error:", err);
+    return () => {
+      newChannel.unsubscribe();
+    };
+  }, [session?.id, user?.id]);
+
+  const sendJoinRequest = () => {
+    if (!channel || !user || !session) return;
+
+    channel.send({
+      type: "broadcast",
+      event: "JOIN_REQUEST",
+      payload: {
+        type: "JOIN_REQUEST",
+        senderId: user.id,
+        timestamp: new Date().toISOString(),
+      } as JoinRequestMessage,
     });
   };
 
-  const handleIncomingMessage = (conn: DataConnection, message: Message) => {
-    console.log("Received message:", message.type, message);
+  const handleJoinRequest = (participantId: string) => {
+    if (!user?.isHost || !session || !channel) return;
 
-    switch (message.type) {
-      case "JOIN_REQUEST":
-        handleJoinRequest(conn);
-        break;
-      case "JOIN_ACCEPTED":
-        handleJoinAccepted(message as JoinAcceptedMessage);
-        break;
-      case "PARTICIPANT_JOINED":
-        handleParticipantJoined(message as ParticipantJoinedMessage);
-        break;
-      case "CARD_ADDED":
-        handleCardAdded(message as CardAddedMessage);
-        break;
-      case "CARD_SELECTED":
-        handleCardSelected(message as CardSelectedMessage);
-        break;
-      case "SESSION_RESET":
-        handleSessionReset();
-        break;
-      case "SESSION_STATE":
-        handleSessionState(message as SessionStateMessage);
-        break;
-      case "SESSION_NEW":
-        handleSessionNew(message as SessionNewMessage);
-        break;
-      default:
-        console.warn("Unknown message type:", message.type);
-    }
-  };
-
-  const handleJoinRequest = (conn: DataConnection) => {
-    if (!user?.isHost || !session) return;
-
-    const newParticipantId = conn.peer;
     const timestamp = new Date().toISOString();
 
     const newParticipant: Participant = {
-      id: newParticipantId,
+      id: participantId,
       isHost: false,
       joinedAt: timestamp,
     };
 
     setParticipants((prev) => [...prev, newParticipant]);
 
-    conn.send({
-      type: "JOIN_ACCEPTED",
-      senderId: user.id,
-      timestamp,
-      data: {
-        participantId: newParticipantId,
-        session,
-        participants: [...participants, newParticipant],
-        cards,
-      },
-    } as JoinAcceptedMessage);
+    // Send direct message to the new participant
+    channel.send({
+      type: "broadcast",
+      event: "JOIN_ACCEPTED",
+      payload: {
+        type: "JOIN_ACCEPTED",
+        senderId: user.id,
+        timestamp,
+        data: {
+          participantId,
+          session,
+          participants: [...participants, newParticipant],
+          cards,
+        },
+      } as JoinAcceptedMessage,
+    });
 
-    broadcastToOthers(conn.peer, {
+    // Notify others about the new participant
+    broadcastToAll({
       type: "PARTICIPANT_JOINED",
       senderId: user.id,
       timestamp,
@@ -248,8 +243,8 @@ export function PeerProvider({ children }: { children: ReactNode }) {
       )
     );
 
-    const selectedCard = cards.find((card) => card.id === cardId) || null;
-    setSelectedCard(selectedCard);
+    const cardSelected = cards.find((card) => card.id === cardId) || null;
+    setSelectedCard(cardSelected);
 
     if (session) {
       setSession({
@@ -262,7 +257,6 @@ export function PeerProvider({ children }: { children: ReactNode }) {
     setShowRandomPicker(true);
   };
 
-  // Refresh selected cards
   const handleSessionReset = () => {
     setCards((prev) => prev.map((card) => ({ ...card, selected: false })));
     setSelectedCard(null);
@@ -291,7 +285,6 @@ export function PeerProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  // セッション状態の処理（新規参加者への同期用）
   const handleSessionState = (message: SessionStateMessage) => {
     const {
       session: newSession,
@@ -311,66 +304,22 @@ export function PeerProvider({ children }: { children: ReactNode }) {
   };
 
   const broadcastToAll = (message: Message) => {
-    connections.forEach((conn) => conn.send(message));
-  };
+    if (!channel) return;
 
-  const broadcastToOthers = (excludePeerId: string, message: Message) => {
-    connections
-      .filter((conn) => conn.peer !== excludePeerId)
-      .forEach((conn) => conn.send(message));
-  };
-
-  const connectToHost = async (hostId: string): Promise<DataConnection> => {
-    if (!peer) {
-      throw new Error("Peer connection is not initialized");
-    }
-
-    return new Promise((resolve, reject) => {
-      try {
-        console.log(`Attempting to connect to host: ${hostId}`);
-        const conn = peer.connect(hostId, {
-          reliable: true,
-          serialization: "json",
-        });
-
-        if (!conn) {
-          reject(new Error("Connection failed to establish"));
-          return;
-        }
-
-        let connectionOpened = false;
-
-        conn.on("open", () => {
-          console.log("Connection opened successfully");
-          connectionOpened = true;
-          setConnections((prev) => [...prev, conn]);
-          setupConnectionHandlers(conn);
-          resolve(conn);
-        });
-
-        conn.on("error", (err) => {
-          console.error("Connection error:", err);
-          if (!connectionOpened) {
-            reject(err);
-          }
-        });
-
-        // タイムアウト処理
-        setTimeout(() => {
-          if (!connectionOpened) {
-            console.error("Connection timed out");
-            reject(new Error("Connection timed out"));
-          }
-        }, 10000); // 10秒タイムアウト
-      } catch (err) {
-        console.error("Error in connection attempt:", err);
-        reject(err);
-      }
+    channel.send({
+      type: "broadcast",
+      event: message.type,
+      payload: message,
     });
   };
 
+  //   const broadcastToOthers = (excludePeerId: string, message: Message) => {
+  //     // In Supabase, we can't exclude specific clients, so we broadcast to all
+  //     // and filter on the client side if needed
+  //     broadcastToAll(message);
+  //   };
+
   const createSession = async (sessionName: string): Promise<string> => {
-    console.log({ sessionName });
     if (!sessionName) {
       throw new Error("Require session name.");
     }
@@ -379,8 +328,8 @@ export function PeerProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      const sessionId = nanoid(10);
-      const userId = nanoid(10) + Date.now().toString();
+      const sessionId = generateUniqueId();
+      const userId = generateUniqueId();
       const timestamp = new Date().toISOString();
 
       const newSession: Session = {
@@ -404,6 +353,41 @@ export function PeerProvider({ children }: { children: ReactNode }) {
         isHost: true,
         joinedAt: timestamp,
       };
+
+      // Save session to Supabase
+      const { error: sessionError } = await supabase.from("sessions").insert([
+        {
+          id: sessionId,
+          name: sessionName,
+          host_id: userId,
+          status: "collecting",
+          selected_card_id: null,
+          created_at: timestamp,
+          last_activity: timestamp,
+        },
+      ]);
+
+      if (sessionError) {
+        throw new Error(`Failed to create session: ${sessionError.message}`);
+      }
+
+      // Save host participant
+      const { error: participantError } = await supabase
+        .from("participants")
+        .insert([
+          {
+            id: userId,
+            session_id: sessionId,
+            is_host: true,
+            joined_at: timestamp,
+          },
+        ]);
+
+      if (participantError) {
+        throw new Error(
+          `Failed to create participant: ${participantError.message}`
+        );
+      }
 
       setUser(newUser);
       setSession(newSession);
@@ -430,60 +414,57 @@ export function PeerProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      // SessionId =  host PeerID + Any identifier
-      const hostId = sessionId;
+      // Check if session exists
+      const { data: sessionData, error: sessionError } = await supabase
+        .from("sessions")
+        .select("*")
+        .eq("id", sessionId)
+        .single();
 
-      const userId = nanoid(10);
+      if (sessionError) {
+        throw new Error("Session not found");
+      }
+
+      const userId = generateUniqueId();
+      const timestamp = new Date().toISOString();
+
       const newUser: User = {
         id: userId,
         isHost: false,
         sessionId,
       };
 
-      setUser(newUser);
+      // Save the participant
+      const { error: participantError } = await supabase
+        .from("participants")
+        .insert([
+          {
+            id: userId,
+            session_id: sessionId,
+            is_host: false,
+            joined_at: timestamp,
+          },
+        ]);
 
-      // ホストとの接続を確立（PeerJSの初期化を待つ）
-      const waitForPeer = async (): Promise<Peer> => {
-        return new Promise((resolve, reject) => {
-          if (peer) {
-            resolve(peer);
-          } else {
-            try {
-              const newPeer = new Peer(userId, {
-                debug: 3, // デバッグレベルを最大に
-                config: {
-                  iceServers: [
-                    { urls: "stun:stun.l.google.com:19302" },
-                    { urls: "stun:global.stun.twilio.com:3478" },
-                  ],
-                },
-              });
-              newPeer.on("open", () => {
-                setPeer(newPeer);
-                resolve(newPeer);
-              });
-              newPeer.on("error", (err) => {
-                reject(err);
-              });
-            } catch (err) {
-              reject(err);
-            }
-          }
-        });
+      if (participantError) {
+        throw new Error(
+          `Failed to create participant: ${participantError.message}`
+        );
+      }
+
+      // Create session object from DB data
+      const mappedSession: Session = {
+        id: sessionData.id,
+        name: sessionData.name,
+        hostId: sessionData.host_id,
+        status: sessionData.status,
+        selectedCardId: sessionData.selected_card_id,
+        createdAt: sessionData.created_at,
+        lastActivity: sessionData.last_activity,
       };
 
-      // PeerJSの準備ができるまで待機
-      await waitForPeer();
-
-      // ホストに接続
-      const conn = await connectToHost(hostId);
-
-      // 参加リクエストを送信
-      conn.send({
-        type: "JOIN_REQUEST",
-        senderId: userId,
-        timestamp: new Date().toISOString(),
-      } as JoinRequestMessage);
+      setUser(newUser);
+      setSession(mappedSession);
 
       setLoading(false);
     } catch (error) {
@@ -500,10 +481,10 @@ export function PeerProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const cardId = nanoid(10);
+      const cardId = generateUniqueId();
       const timestamp = new Date().toISOString();
 
-      // 新しいカード
+      // Create new card
       const newCard: Card = {
         id: cardId,
         authorId: user.id,
@@ -512,10 +493,26 @@ export function PeerProvider({ children }: { children: ReactNode }) {
         createdAt: timestamp,
       };
 
-      // ローカルステートに追加
+      // Save card to Supabase
+      const { error: cardError } = await supabase.from("cards").insert([
+        {
+          id: cardId,
+          session_id: session.id,
+          author_id: user.id,
+          content: content.trim(),
+          selected: false,
+          created_at: timestamp,
+        },
+      ]);
+
+      if (cardError) {
+        throw new Error(`Failed to save card: ${cardError.message}`);
+      }
+
+      // Add to local state
       setCards((prev) => [...prev, newCard]);
 
-      // ホストの場合は全参加者に通知
+      // Notify others
       if (user.isHost) {
         broadcastToAll({
           type: "CARD_ADDED",
@@ -526,20 +523,15 @@ export function PeerProvider({ children }: { children: ReactNode }) {
           },
         } as CardAddedMessage);
       } else {
-        // 参加者の場合はホストにのみ通知
-        const hostConn = connections.find(
-          (conn) => conn.peer === session.hostId
-        );
-        if (hostConn) {
-          hostConn.send({
-            type: "CARD_ADDED",
-            senderId: user.id,
-            timestamp,
-            data: {
-              card: newCard,
-            },
-          } as CardAddedMessage);
-        }
+        // If not host, send specifically to host (in Supabase we just broadcast)
+        broadcastToAll({
+          type: "CARD_ADDED",
+          senderId: user.id,
+          timestamp,
+          data: {
+            card: newCard,
+          },
+        } as CardAddedMessage);
       }
     } catch (error) {
       console.error("カード投稿エラー:", error);
@@ -563,6 +555,33 @@ export function PeerProvider({ children }: { children: ReactNode }) {
 
       setShowRandomPicker(true);
 
+      const newStatus: SessionStatus =
+        unselectedCards.length === 1 ? "finished" : "picking";
+
+      // Update card in Supabase
+      const { error: cardError } = await supabase
+        .from("cards")
+        .update({ selected: true })
+        .eq("id", pickedCard.id);
+
+      if (cardError) {
+        throw new Error(`Failed to update card: ${cardError.message}`);
+      }
+
+      // Update session in Supabase
+      const { error: sessionError } = await supabase
+        .from("sessions")
+        .update({
+          status: newStatus,
+          selected_card_id: pickedCard.id,
+        })
+        .eq("id", session.id);
+
+      if (sessionError) {
+        throw new Error(`Failed to update session: ${sessionError.message}`);
+      }
+
+      // Update local state
       setCards((prev) =>
         prev.map((card) =>
           card.id === pickedCard.id ? { ...card, selected: true } : card
@@ -571,15 +590,13 @@ export function PeerProvider({ children }: { children: ReactNode }) {
 
       setSelectedCard(pickedCard);
 
-      const newStatus: SessionStatus =
-        unselectedCards.length === 1 ? "finished" : "picking";
       setSession({
         ...session,
         status: newStatus,
         selectedCardId: pickedCard.id,
       });
 
-      // Notify participants
+      // Notify others
       broadcastToAll({
         type: "CARD_SELECTED",
         senderId: user.id,
@@ -603,6 +620,32 @@ export function PeerProvider({ children }: { children: ReactNode }) {
     try {
       const timestamp = new Date().toISOString();
 
+      // Update session in Supabase
+      const { error: sessionError } = await supabase
+        .from("sessions")
+        .update({
+          name: sessionName,
+          status: "collecting",
+          selected_card_id: null,
+          last_activity: timestamp,
+        })
+        .eq("id", session.id);
+
+      if (sessionError) {
+        throw new Error(`Failed to update session: ${sessionError.message}`);
+      }
+
+      // Delete all cards for this session
+      const { error: deleteCardsError } = await supabase
+        .from("cards")
+        .delete()
+        .eq("session_id", session.id);
+
+      if (deleteCardsError) {
+        throw new Error(`Failed to delete cards: ${deleteCardsError.message}`);
+      }
+
+      // Update local state
       setCards([]);
       setSelectedCard(null);
 
@@ -614,6 +657,7 @@ export function PeerProvider({ children }: { children: ReactNode }) {
         lastActivity: timestamp,
       });
 
+      // Notify others
       broadcastToAll({
         type: "SESSION_NEW",
         senderId: user.id,
@@ -652,7 +696,6 @@ export function PeerProvider({ children }: { children: ReactNode }) {
 }
 
 // 使いやすいようにフックとして提供
-
 // eslint-disable-next-line react-refresh/only-export-components
 export function usePeer() {
   const context = useContext(PeerContext);

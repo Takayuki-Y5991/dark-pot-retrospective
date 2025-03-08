@@ -34,7 +34,7 @@ const CardList = ({ cards, isMyCards }: CardListProps) => {
         >
           <p className="mb-3">{card.content}</p>
           <div className="text-xs text-slate-400 flex justify-between">
-            {!isMyCards && <span>投稿者: {card.authorName}</span>}
+            {!isMyCards && <span>投稿者: {card.authorId}</span>}
             {card.selected && (
               <span className="text-yamunabe-500">選択済み</span>
             )}

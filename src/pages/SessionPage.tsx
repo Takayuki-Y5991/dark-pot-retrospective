@@ -17,25 +17,38 @@ const SessionPage: React.FC = () => {
     loading,
     error,
     showRandomPicker,
-    setShowRandomPicker,
     pickRandomCard,
     newSession: resetSession,
+    handleRandomPickerClose,
   } = usePeer();
 
+  // URL parameters and navigation
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
 
+  // Local state
   const [showShareModal, setShowShareModal] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState(sessionId || "");
 
-  // ユーザーがログインしていない場合はホームにリダイレクト
+  // Toggle state for showing all cards - initially false (closed)
+  const [showAllCards, setShowAllCards] = useState(false);
+
+  // Monitor session ID changes
+  useEffect(() => {
+    if (session?.id && session.id !== currentSessionId) {
+      setCurrentSessionId(session.id);
+    }
+  }, [session?.id, currentSessionId]);
+
+  // Redirect to home if user is not logged in
   useEffect(() => {
     if (!loading && !user) {
       navigate("/");
     }
   }, [user, loading, navigate]);
 
-  // カード抽選ハンドラ
+  // Card selection handler
   const handlePickRandomCard = async () => {
     if (!user?.isHost) return;
 
@@ -43,109 +56,124 @@ const SessionPage: React.FC = () => {
       await pickRandomCard();
     } catch (err) {
       setLocalError(
-        err instanceof Error ? err.message : "予期せぬエラーが発生しました"
+        err instanceof Error ? err.message : "An unexpected error occurred"
       );
       setTimeout(() => setLocalError(null), 3000);
     }
   };
 
-  // セッションリセットハンドラ
+  // Session reset handler
   const handleResetSession = async () => {
     if (!user?.isHost) return;
 
     if (
       window.confirm(
-        "本当にセッションをリセットしますか？すべてのカードが削除されます。"
+        "Are you sure you want to reset the session? All cards will be deleted."
       )
     ) {
       try {
-        // セッション名の入力を求める
+        // Ask for new session name
         const newSessionName = prompt(
-          "新しいセッション名を入力してください",
+          "Please enter a new session name",
           session?.name
         );
 
-        // キャンセルした場合は処理中止
+        // Cancel if user pressed cancel
         if (newSessionName === null) return;
 
-        // 空の場合は元の名前を使用
+        // Use original name if empty
         const finalSessionName =
-          newSessionName?.trim() || session?.name || "新しいセッション";
+          newSessionName?.trim() || session?.name || "New Session";
 
-        await resetSession(finalSessionName);
+        // Get resetSession return value and update new session ID
+        const newSessionId = await resetSession(finalSessionName);
+        if (newSessionId) {
+          setCurrentSessionId(newSessionId);
+          // Show share modal after creating new session
+          setTimeout(() => {
+            setShowShareModal(true);
+          }, 500);
+        }
       } catch (err) {
         setLocalError(
-          err instanceof Error ? err.message : "予期せぬエラーが発生しました"
+          err instanceof Error ? err.message : "An unexpected error occurred"
         );
         setTimeout(() => setLocalError(null), 3000);
       }
     }
   };
 
-  // ローディング中表示
+  // Toggle button handler
+  const toggleAllCards = () => {
+    setShowAllCards((prev) => !prev);
+  };
+
+  // Loading display
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-dark-pot-500 mx-auto mb-4"></div>
-          <p className="text-slate-400">読み込み中...</p>
+          <p className="text-slate-400">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // エラー表示
+  // Error display
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="bg-red-900/70 text-white p-6 rounded-lg max-w-md w-full text-center">
-          <h2 className="text-xl font-bold mb-4">エラーが発生しました</h2>
+          <h2 className="text-xl font-bold mb-4">An Error Occurred</h2>
           <p className="mb-4">{error}</p>
           <button
             onClick={() => navigate("/")}
             className="px-4 py-2 bg-white text-red-900 rounded-md font-medium"
           >
-            ホームに戻る
+            Return to Home
           </button>
         </div>
       </div>
     );
   }
 
-  // 参加者自身のカード
+  // User's own cards
   const myCards = cards.filter((card) => card.authorId === user?.id);
 
-  // 未選択のカード
+  // Unselected cards
   const unselectedCards = cards.filter((card) => !card.selected);
 
   return (
     <div className="min-h-screen bg-slate-900 text-white">
-      {/* ヘッダー */}
+      {/* Header */}
       <header className="bg-slate-800 p-4 shadow-md">
         <div className="max-w-6xl mx-auto flex flex-wrap justify-between items-center">
           <h1 className="text-2xl font-bold text-dark-pot-500">
             {session?.name}
             <span className="ml-2 text-sm text-slate-400">
-              #{sessionId?.substring(0, 8)}
+              #{currentSessionId.substring(0, 8)}
             </span>
           </h1>
 
           <div className="flex items-center space-x-4 mt-2 sm:mt-0">
-            <div className="text-slate-400">{participants.length}人参加中</div>
+            <div className="text-slate-400">
+              {participants.length} participants
+            </div>
 
             <button
               onClick={() => setShowShareModal(true)}
               className="py-2 px-4 bg-slate-700 hover:bg-slate-600 rounded"
             >
-              共有
+              Share
             </button>
           </div>
         </div>
       </header>
 
-      {/* メインコンテンツ */}
+      {/* Main content */}
       <main className="max-w-6xl mx-auto p-4">
-        {/* ローカルエラー表示 */}
+        {/* Local error display */}
         <AnimatePresence>
           {localError && (
             <motion.div
@@ -159,7 +187,7 @@ const SessionPage: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* ステータス表示 */}
+        {/* Status display */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -168,24 +196,24 @@ const SessionPage: React.FC = () => {
           <div className="flex flex-wrap justify-between items-center">
             <div>
               <h2 className="text-xl font-semibold">
-                ステータス:
+                Status:
                 {session?.status === "collecting" && (
-                  <span className="text-green-400 ml-2">募集中</span>
+                  <span className="text-green-400 ml-2">Collecting</span>
                 )}
                 {session?.status === "picking" && (
-                  <span className="text-dark-pot-500 ml-2">抽選中</span>
+                  <span className="text-dark-pot-500 ml-2">Selecting</span>
                 )}
                 {session?.status === "finished" && (
-                  <span className="text-blue-400 ml-2">完了</span>
+                  <span className="text-blue-400 ml-2">Completed</span>
                 )}
               </h2>
               <p className="text-slate-400">
                 {session?.status === "collecting" &&
-                  "参加者からのトピック投稿を受け付けています"}
+                  "Accepting topic submissions from participants"}
                 {session?.status === "picking" &&
-                  "トピックを抽選して議論しています"}
+                  "Selecting topics for discussion"}
                 {session?.status === "finished" &&
-                  "全てのトピックが選ばれました"}
+                  "All topics have been selected"}
               </p>
             </div>
 
@@ -199,21 +227,21 @@ const SessionPage: React.FC = () => {
                   }
                   className="py-2 px-4 bg-dark-pot-500 hover:bg-dark-pot-600 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-medium rounded"
                 >
-                  トピックを抽選
+                  Select Topic
                 </button>
 
                 <button
                   onClick={handleResetSession}
                   className="py-2 px-4 bg-slate-700 hover:bg-slate-600 rounded"
                 >
-                  新しいセッション
+                  New Session
                 </button>
               </div>
             )}
           </div>
         </motion.div>
 
-        {/* 選択中のカード表示 */}
+        {/* Selected card display */}
         <AnimatePresence>
           {selectedCard && (
             <motion.div
@@ -222,63 +250,104 @@ const SessionPage: React.FC = () => {
               exit={{ opacity: 0, scale: 0.9 }}
               className="bg-dark-pot-500 text-slate-900 rounded-lg p-6 mb-6 shadow-lg"
             >
-              <h3 className="text-lg font-semibold mb-2">現在のトピック</h3>
+              <h3 className="text-lg font-semibold mb-2">Current Topic</h3>
               <div className="bg-white rounded-lg p-6 text-lg shadow-inner">
                 {selectedCard.content}
               </div>
               <div className="mt-4 text-sm flex justify-end">
-                <div className="flex items-center">投稿者: 匿名</div>
+                <div className="flex items-center">Posted by: Anonymous</div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* カード投稿フォーム */}
+        {/* Card submission form */}
         {session?.status === "collecting" && <CardInput />}
 
-        {/* カードリスト */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* マイカード一覧 */}
+        {/* Card list */}
+        <div className="space-y-6">
+          {/* My cards list */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0, transition: { delay: 0.1 } }}
           >
             <h3 className="text-xl font-semibold mb-4">
-              あなたの投稿 ({myCards.length})
+              Your Posts ({myCards.length})
             </h3>
             <CardList cards={myCards} isMyCards={true} />
           </motion.div>
 
-          {/* すべてのカード一覧 */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0, transition: { delay: 0.2 } }}
-          >
-            <h3 className="text-xl font-semibold mb-4">
-              すべての投稿 ({cards.length})
-            </h3>
-            <CardList cards={cards} isMyCards={false} />
-          </motion.div>
+          {/* All cards list (host only - toggleable) */}
+          {user?.isHost && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0, transition: { delay: 0.2 } }}
+            >
+              <div
+                className="flex justify-between items-center mb-4 cursor-pointer"
+                onClick={toggleAllCards}
+              >
+                <h3 className="text-xl font-semibold">
+                  All Posts ({cards.length})
+                </h3>
+                <div className="flex items-center text-slate-400 hover:text-white">
+                  <span className="mr-2">
+                    {showAllCards ? "Close" : "Show"}
+                  </span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className={`h-5 w-5 transform transition-transform ${
+                      showAllCards ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              <AnimatePresence>
+                {showAllCards && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
+                  >
+                    <CardList cards={cards} isMyCards={false} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
         </div>
       </main>
 
-      {/* 抽選アニメーション */}
+      {/* Selection animation */}
       <AnimatePresence>
         {showRandomPicker && (
           <RandomPicker
             cards={cards}
             selectedCard={selectedCard}
             participants={participants}
-            onClose={() => setShowRandomPicker(false)}
+            onClose={handleRandomPickerClose}
           />
         )}
       </AnimatePresence>
 
-      {/* 共有モーダル */}
+      {/* Share modal */}
       <AnimatePresence>
         {showShareModal && (
           <ShareModal
-            sessionId={sessionId || ""}
+            sessionId={currentSessionId}
             onClose={() => setShowShareModal(false)}
           />
         )}

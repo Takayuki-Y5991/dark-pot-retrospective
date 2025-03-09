@@ -36,6 +36,8 @@ export type MessageType =
   | "SESSION_RESET"
   | "SESSION_STATE"
   | "SESSION_NEW"
+  | "PARTICIPANT_LEFT"
+  | "CARD_DELETED"
   | "PING"
   | "PONG";
 
@@ -100,6 +102,22 @@ export interface SessionNewMessage extends Message {
   type: "SESSION_NEW";
   data: {
     sessionName: string;
+    newSessionId: string;
+    oldSessionId: string;
+    participantIdMap?: Record<string, string>;
+  };
+}
+
+export interface ParticipantLeftMessage extends Message {
+  data: {
+    participantId: string;
+  };
+}
+
+export interface CardDeletedMessage extends Message {
+  type: "CARD_DELETED";
+  data: {
+    cardId: string;
   };
 }
 

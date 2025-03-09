@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 interface ShareModalProps {
   sessionId: string;
@@ -8,32 +8,55 @@ interface ShareModalProps {
 
 const ShareModal: React.FC<ShareModalProps> = ({ sessionId, onClose }) => {
   const [copied, setCopied] = useState(false);
+  // Local state to track sessionId changes
+  const [currentSessionId, setCurrentSessionId] = useState(sessionId);
 
-  // 共有用URLを生成
-  const shareUrl = `${window.location.origin}/session/${sessionId}`;
+  // Update when sessionId changes
+  useEffect(() => {
+    if (sessionId && sessionId !== currentSessionId) {
+      setCurrentSessionId(sessionId);
+    }
+  }, [sessionId, currentSessionId]);
 
-  // クリップボードにコピー
+  // Generate sharing URL
+  const shareUrl = `${window.location.origin}/session/${currentSessionId}`;
+
+  // Copy to clipboard
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("クリップボードコピーエラー:", err);
+    } catch {
+      // Clipboard operations may fail in some browsers
+      return;
     }
   };
 
-  // ネイティブ共有API (モバイル向け)
+  // Copy only the session ID
+  const copySessionId = async () => {
+    try {
+      await navigator.clipboard.writeText(currentSessionId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard operations may fail in some browsers
+      return;
+    }
+  };
+
+  // Native share API (for mobile)
   const nativeShare = async () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "闇鍋レトロスペクティブに参加しよう",
-          text: "レトロスペクティブセッションに参加するための招待です。",
+          title: "Join Dark Pot Retrospective",
+          text: "Here's an invitation to join the retrospective session.",
           url: shareUrl,
         });
-      } catch (err) {
-        console.error("共有エラー:", err);
+      } catch {
+        // User may cancel share operation
+        return;
       }
     } else {
       copyToClipboard();
@@ -54,28 +77,25 @@ const ShareModal: React.FC<ShareModalProps> = ({ sessionId, onClose }) => {
         className="bg-slate-800 rounded-lg max-w-md w-full p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-xl font-semibold mb-4">セッションを共有</h3>
+        <h3 className="text-xl font-semibold mb-4">Share Session</h3>
 
         <p className="text-slate-400 mb-3">
-          以下のリンクまたはセッションIDを共有して参加者を招待できます
+          Share the link or session ID below to invite participants
         </p>
 
         <div className="mb-6">
-          <div className="text-sm text-slate-400 mb-1">セッションID:</div>
+          <div className="text-sm text-slate-400 mb-1">Session ID:</div>
           <div className="flex mb-4">
             <input
               type="text"
-              value={sessionId}
+              value={currentSessionId}
               readOnly
               className="flex-grow p-2 bg-slate-900 border border-slate-700 rounded-l text-sm"
             />
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(sessionId);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }}
+              onClick={copySessionId}
               className="bg-slate-700 hover:bg-slate-600 px-3 rounded-r flex items-center"
+              aria-label="Copy session ID"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -94,6 +114,36 @@ const ShareModal: React.FC<ShareModalProps> = ({ sessionId, onClose }) => {
             </button>
           </div>
 
+          <div className="text-sm text-slate-400 mb-1">Invitation Link:</div>
+          <div className="flex mb-4">
+            <input
+              type="text"
+              value={shareUrl}
+              readOnly
+              className="flex-grow p-2 bg-slate-900 border border-slate-700 rounded-l text-sm"
+            />
+            <button
+              onClick={copyToClipboard}
+              className="bg-slate-700 hover:bg-slate-600 px-3 rounded-r flex items-center"
+              aria-label="Copy link"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-5 h-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"
+                />
+              </svg>
+            </button>
+          </div>
+
           <AnimatePresence>
             {copied && (
               <motion.div
@@ -102,7 +152,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ sessionId, onClose }) => {
                 exit={{ opacity: 0 }}
                 className="text-green-400 text-sm mt-2"
               >
-                コピーしました！
+                Copied!
               </motion.div>
             )}
           </AnimatePresence>
@@ -113,13 +163,13 @@ const ShareModal: React.FC<ShareModalProps> = ({ sessionId, onClose }) => {
             onClick={onClose}
             className="py-2 px-4 bg-slate-700 hover:bg-slate-600 rounded"
           >
-            閉じる
+            Close
           </button>
 
           {typeof navigator.share === "function" && (
             <button
               onClick={nativeShare}
-              className="py-2 px-4 bg-yamunabe-500 hover:bg-yamunabe-600 text-white rounded flex items-center"
+              className="py-2 px-4 bg-dark-pot-500 hover:bg-dark-pot-600 text-white rounded flex items-center"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -135,7 +185,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ sessionId, onClose }) => {
                   d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"
                 />
               </svg>
-              共有する
+              Share
             </button>
           )}
         </div>

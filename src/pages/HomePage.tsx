@@ -27,7 +27,7 @@ export const HomePage = () => {
 
   const handleCreateSession = useCallback(async () => {
     if (!sessionName) {
-      setLocalError("セッション名を入力してください");
+      setLocalError("Please enter a session name");
       return;
     }
 
@@ -37,14 +37,14 @@ export const HomePage = () => {
       navigate(`/session/${sessionId}`);
     } catch (err) {
       setLocalError(
-        err instanceof Error ? err.message : "予期せぬエラーが発生しました"
+        err instanceof Error ? err.message : "An unexpected error occurred"
       );
     }
   }, [createSession, navigate, sessionName]);
 
   const handleJoinSession = useCallback(async () => {
     if (!joinSessionId) {
-      setLocalError("セッションIDを入力してください");
+      setLocalError("Please enter a session ID");
       return;
     }
 
@@ -55,7 +55,7 @@ export const HomePage = () => {
       navigate(`/session/${joinSessionId}`);
     } catch (err) {
       setLocalError(
-        err instanceof Error ? err.message : "予期せぬエラーが発生しました"
+        err instanceof Error ? err.message : "An unexpected error occurred"
       );
     }
   }, [joinSession, joinSessionId, navigate]);
@@ -87,7 +87,7 @@ export const HomePage = () => {
             transition={{ delay: 0.3, duration: 0.5 }}
             className="text-slate-400 text-center mb-6 sm:mb-8 text-sm sm:text-base"
           >
-            チームの振り返りをもっと楽しく、もっと効果的に
+            Make team retrospectives more fun and effective
           </motion.p>
 
           {(error || localError) && (
@@ -103,7 +103,7 @@ export const HomePage = () => {
           )}
 
           <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
-            {/* セッション作成 */}
+            {/* Create session */}
             <motion.div
               whileHover={{ translateY: -5 }}
               transition={{ type: "spring", stiffness: 400, damping: 10 }}
@@ -112,7 +112,7 @@ export const HomePage = () => {
               <div className="flex items-center mb-3 sm:mb-4">
                 <DoorOpen className="w-5 h-5 mr-2 text-dark-pot-400 flex-shrink-0" />
                 <h2 className="text-lg sm:text-xl font-semibold">
-                  新しいセッションを作成
+                  Create New Session
                 </h2>
               </div>
 
@@ -124,19 +124,19 @@ export const HomePage = () => {
                   className="w-full py-2.5 sm:py-3 px-4 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white font-medium rounded-lg transition-all duration-300 shadow-md flex items-center justify-center"
                 >
                   <PlusCircle className="w-4 h-4 mr-2 flex-shrink-0" />
-                  <span className="truncate">セッションを作成</span>
+                  <span className="truncate">Create Session</span>
                 </motion.button>
               ) : (
                 <div className="space-y-3 sm:space-y-4">
                   <div>
                     <label className="block text-sm text-slate-300 mb-1 font-medium">
-                      セッション名
+                      Session Name
                     </label>
                     <input
                       type="text"
                       value={sessionName}
                       onChange={(e) => setSessionName(e.target.value)}
-                      placeholder="例: チームAレトロスペクティブ"
+                      placeholder="e.g., Team A Retrospective"
                       className="w-full p-2 sm:p-2.5 bg-slate-800/80 border border-slate-600 rounded-lg focus:ring-2 focus:ring-dark-pot-500 focus:border-transparent transition-all duration-200 outline-none shadow-inner text-sm sm:text-base"
                     />
                   </div>
@@ -149,24 +149,24 @@ export const HomePage = () => {
                       className="w-full sm:flex-1 py-2 sm:py-2.5 px-4 bg-slate-600 hover:bg-slate-500 text-white font-medium rounded-lg transition-all duration-200 flex items-center justify-center"
                     >
                       <X className="w-4 h-4 mr-2 flex-shrink-0" />
-                      <span className="truncate">キャンセル</span>
+                      <span className="truncate">Cancel</span>
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={handleCreateSession}
                       disabled={loading || !sessionName}
-                      className="w-full sm:flex-1 py-2 sm:py-2.5 px-4 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 disabled:from-slate-500 disabled:to-slate-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-all duration-200 flex items-center justify-center"
+                      className="w-full sm:flex-1 py-2 sm:py-2.5 px-4 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 disabled:from-slate-700 disabled:to-slate-800 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-all duration-200 flex items-center justify-center"
                     >
                       {loading ? (
                         <>
                           <Loader className="w-4 h-4 mr-2 animate-spin flex-shrink-0" />
-                          <span className="truncate">お待ちください...</span>
+                          <span className="truncate">Please wait...</span>
                         </>
                       ) : (
                         <>
                           <ArrowRight className="w-4 h-4 mr-2 flex-shrink-0" />
-                          <span className="truncate">作成</span>
+                          <span className="truncate">Create</span>
                         </>
                       )}
                     </motion.button>
@@ -175,7 +175,7 @@ export const HomePage = () => {
               )}
             </motion.div>
 
-            {/* セッション参加 */}
+            {/* Join session */}
             <motion.div
               whileHover={{ translateY: -5 }}
               transition={{ type: "spring", stiffness: 400, damping: 10 }}
@@ -184,7 +184,7 @@ export const HomePage = () => {
               <div className="flex items-center mb-3 sm:mb-4">
                 <Users className="w-5 h-5 mr-2 text-dark-pot-400 flex-shrink-0" />
                 <h2 className="text-lg sm:text-xl font-semibold">
-                  既存のセッションに参加
+                  Join Existing Session
                 </h2>
               </div>
 
@@ -196,19 +196,19 @@ export const HomePage = () => {
                   className="w-full py-2.5 sm:py-3 px-4 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white font-medium rounded-lg transition-all duration-300 shadow-md flex items-center justify-center"
                 >
                   <LogIn className="w-4 h-4 mr-2 flex-shrink-0" />
-                  <span className="truncate">セッションに参加</span>
+                  <span className="truncate">Join Session</span>
                 </motion.button>
               ) : (
                 <div className="space-y-3 sm:space-y-4">
                   <div>
                     <label className="block text-sm text-slate-300 mb-1 font-medium">
-                      セッションID
+                      Session ID
                     </label>
                     <input
                       type="text"
                       value={joinSessionId}
                       onChange={(e) => setJoinSessionId(e.target.value)}
-                      placeholder="ホストから共有されたID"
+                      placeholder="ID shared by the host"
                       className="w-full p-2 sm:p-2.5 bg-slate-800/80 border border-slate-600 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-200 outline-none shadow-inner text-sm sm:text-base"
                     />
                   </div>
@@ -221,7 +221,7 @@ export const HomePage = () => {
                       className="w-full sm:flex-1 py-2 sm:py-2.5 px-4 bg-slate-600 hover:bg-slate-500 text-white font-medium rounded-lg transition-all duration-200 flex items-center justify-center"
                     >
                       <X className="w-4 h-4 mr-2 flex-shrink-0" />
-                      <span className="truncate">キャンセル</span>
+                      <span className="truncate">Cancel</span>
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.02 }}
@@ -233,12 +233,12 @@ export const HomePage = () => {
                       {loading ? (
                         <>
                           <Loader className="w-4 h-4 mr-2 animate-spin flex-shrink-0" />
-                          <span className="truncate">お待ちください...</span>
+                          <span className="truncate">Please wait...</span>
                         </>
                       ) : (
                         <>
                           <LogIn className="w-4 h-4 mr-2 flex-shrink-0" />
-                          <span className="truncate">参加</span>
+                          <span className="truncate">Join</span>
                         </>
                       )}
                     </motion.button>

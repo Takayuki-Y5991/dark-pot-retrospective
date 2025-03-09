@@ -1,6 +1,6 @@
+import { usePeer } from "@/contexts/PeerContext";
 import { AnimatePresence, motion } from "framer-motion";
-import React, { useState } from "react";
-import { usePeer } from "../contexts/PeerContext";
+import React, { useCallback, useState } from "react";
 
 const CardInput = () => {
   const { submitCard } = usePeer();
@@ -9,30 +9,32 @@ const CardInput = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
 
-    if (!content.trim()) {
-      setError("トピックを入力してください");
-      return;
-    }
+      if (!content.trim()) {
+        setError("Please enter a topic");
+        return;
+      }
 
-    setError(null);
-    setIsSubmitting(true);
+      setError(null);
+      setIsSubmitting(true);
 
-    try {
-      await submitCard(content);
-      setContent("");
+      try {
+        await submitCard(content);
+        setContent("");
 
-      // 成功メッセージを表示して一定時間後に消す
-      setSuccessMessage("トピックを投稿しました！");
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "投稿に失敗しました");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+        setSuccessMessage("Topic posted successfully!");
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to post");
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [content, submitCard]
+  );
 
   return (
     <motion.div
@@ -41,15 +43,15 @@ const CardInput = () => {
       transition={{ duration: 0.3 }}
       className="bg-slate-800 rounded-lg p-5 shadow-lg mb-6"
     >
-      <h3 className="text-lg font-semibold mb-3">新しいトピックを投稿</h3>
+      <h3 className="text-lg font-semibold mb-3">Post New Topic</h3>
 
       <form onSubmit={handleSubmit}>
         <div className="mb-3">
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="レトロスペクティブで話し合いたいことを入力してください..."
-            className="w-full p-3 bg-slate-900 border border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-yamunabe-500 focus:border-transparent h-24 resize-none"
+            placeholder="Enter what you want to discuss in the retrospective..."
+            className="w-full p-3 bg-slate-900 border border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-dark-pot-500 focus:border-transparent h-24 resize-none"
             disabled={isSubmitting}
           />
         </div>
@@ -86,9 +88,9 @@ const CardInput = () => {
             whileTap={{ scale: 0.97 }}
             type="submit"
             disabled={isSubmitting || !content.trim()}
-            className="py-2 px-4 bg-yamunabe-500 hover:bg-yamunabe-600 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-medium rounded transition-colors"
+            className="py-2 px-4 bg-dark-pot-500 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 disabled:from-slate-700 disabled:to-slate-800 disabled:cursor-not-allowed text-white font-medium rounded transition-colors"
           >
-            {isSubmitting ? "投稿中..." : "投稿する"}
+            {isSubmitting ? "Posting..." : "Post"}
           </motion.button>
         </div>
       </form>

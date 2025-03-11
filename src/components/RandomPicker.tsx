@@ -160,14 +160,13 @@ const PotAnimation = () => {
 
 const RandomPicker = ({ cards, selectedCard, onClose }: RandomPickerProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [speed, setSpeed] = useState(150); // Initial value set slightly slower
+  const [speed, setSpeed] = useState(150);
   const [showResult, setShowResult] = useState(false);
-  const [phase, setPhase] = useState("initializing"); // initializing, shuffling, result
+  const [phase, setPhase] = useState("initializing");
   const [shuffleCards, setShuffleCards] = useState<Card[]>([]);
   const [countdownTime, setCountdownTime] = useState(5);
   const [countdownActive, setCountdownActive] = useState(false);
 
-  // Check selected card on initial mount
   useEffect(() => {
     if (selectedCard) {
       setPhase("shuffling");
@@ -222,7 +221,6 @@ const RandomPicker = ({ cards, selectedCard, onClose }: RandomPickerProps) => {
           setShuffleCards(shuffleSet);
           setPhase("shuffling");
 
-          // Start countdown
           setCountdownActive(true);
         }
       }, 1500);
@@ -231,7 +229,6 @@ const RandomPicker = ({ cards, selectedCard, onClose }: RandomPickerProps) => {
     }
   }, [selectedCard, cards, onClose]);
 
-  // Countdown processing
   useEffect(() => {
     if (!countdownActive) return;
 
@@ -239,7 +236,6 @@ const RandomPicker = ({ cards, selectedCard, onClose }: RandomPickerProps) => {
       setCountdownTime((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          // If no result is shown when countdown ends, force close
           if (!showResult && !selectedCard) {
             onClose();
           }
@@ -256,12 +252,10 @@ const RandomPicker = ({ cards, selectedCard, onClose }: RandomPickerProps) => {
   useEffect(() => {
     if (phase !== "shuffling" || shuffleCards.length === 0) return;
 
-    // Switch card index at regular intervals
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % shuffleCards.length);
     }, speed);
 
-    // Gradually slow down (for more dramatic effect)
     const slowDown = setTimeout(() => {
       setSpeed((prev) => Math.min(prev + 50, 500));
     }, 1000);
@@ -272,7 +266,6 @@ const RandomPicker = ({ cards, selectedCard, onClose }: RandomPickerProps) => {
     };
   }, [phase, shuffleCards.length, speed]);
 
-  // Get content of currently displayed card
   const getCurrentCard = () => {
     if (showResult && selectedCard) {
       return selectedCard;

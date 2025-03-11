@@ -30,12 +30,10 @@ import {
   User,
 } from "../types";
 
-// Supabase connection setup
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
 const generateUniqueId = (): string => {
-  // ランダムな文字列 + タイムスタンプ + ランダムな数値
   return nanoid(6) + "_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
 };
 
@@ -76,7 +74,6 @@ export function PeerProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [showRandomPicker, setShowRandomPicker] = useState<boolean>(false);
 
-  // presenceチャネルの参照を保持
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
@@ -120,7 +117,6 @@ export function PeerProvider({ children }: { children: ReactNode }) {
       .on("presence", { event: "leave" }, async ({ key }) => {
         console.log(`User ${key} left`);
 
-        // ホストが退出した場合、セッションを終了する
         if (key === session.hostId && user?.id !== session.hostId) {
           console.log("Host left, session will be closed");
           await handleHostLeft();
@@ -150,12 +146,10 @@ export function PeerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user || !session) return;
 
-    // Setup Supabase real-time channel
     const newChannel = supabase.channel(`session:${session.id}`, {
       config: { broadcast: { self: false } },
     });
 
-    // Handle incoming messages based on type
     newChannel
       .on("broadcast", { event: "JOIN_REQUEST" }, ({ payload }) => {
         if (user.isHost) {
@@ -193,13 +187,11 @@ export function PeerProvider({ children }: { children: ReactNode }) {
         handleCardDeleted(payload as CardDeletedMessage);
       });
 
-    // Subscribe to the channel
     newChannel.subscribe((status) => {
       if (status === "SUBSCRIBED") {
         console.log(`Subscribed to session channel: ${session.id}`);
         setChannel(newChannel);
 
-        // If not host, send join request
         if (!user.isHost) {
           sendJoinRequest();
         }
@@ -213,7 +205,6 @@ export function PeerProvider({ children }: { children: ReactNode }) {
   }, [session?.id, user?.id]);
 
   // PeerProviderコンポーネント内のbeforeunloadイベントハンドラを修正
-
   useEffect(() => {
     const handleBeforeUnload = async (event: BeforeUnloadEvent) => {
       if (user) {
@@ -281,6 +272,7 @@ export function PeerProvider({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, session, channel, supabase]);
 
   useEffect(() => {
@@ -388,6 +380,7 @@ export function PeerProvider({ children }: { children: ReactNode }) {
     };
 
     checkAndCleanupPreviousSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]);
   // handleUserLeave関数は残しておく（非ホストユーザーの退出処理に必要）
   // 新しいチャネルをセットアップする関数
@@ -1490,7 +1483,6 @@ export function PeerProvider({ children }: { children: ReactNode }) {
             })
             .eq("id", session.id);
 
-          // ローカルセッション状態を更新
           setSession({
             ...session,
             status: newStatus,
@@ -1540,7 +1532,6 @@ export function PeerProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// 使いやすいようにフックとして提供
 // eslint-disable-next-line react-refresh/only-export-components
 export function usePeer() {
   const context = useContext(PeerContext);

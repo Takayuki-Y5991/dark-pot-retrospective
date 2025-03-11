@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import CardInput from "../components/CardInput";
 import CardList from "../components/CardList";
@@ -22,33 +22,15 @@ const SessionPage: React.FC = () => {
     handleRandomPickerClose,
   } = usePeer();
 
-  // URL parameters and navigation
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
 
-  // Local state
   const [showShareModal, setShowShareModal] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState(sessionId || "");
 
-  // Toggle state for showing all cards - initially false (closed)
   const [showAllCards, setShowAllCards] = useState(false);
 
-  // Monitor session ID changes
-  useEffect(() => {
-    if (session?.id && session.id !== currentSessionId) {
-      setCurrentSessionId(session.id);
-    }
-  }, [session?.id, currentSessionId]);
-
-  // Redirect to home if user is not logged in
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate("/");
-    }
-  }, [user, loading, navigate]);
-
-  // Card selection handler
   const handlePickRandomCard = async () => {
     if (!user?.isHost) return;
 
@@ -62,7 +44,6 @@ const SessionPage: React.FC = () => {
     }
   };
 
-  // Session reset handler
   const handleResetSession = async () => {
     if (!user?.isHost) return;
 
@@ -72,24 +53,20 @@ const SessionPage: React.FC = () => {
       )
     ) {
       try {
-        // Ask for new session name
         const newSessionName = prompt(
           "Please enter a new session name",
           session?.name
         );
 
-        // Cancel if user pressed cancel
         if (newSessionName === null) return;
 
-        // Use original name if empty
         const finalSessionName =
           newSessionName?.trim() || session?.name || "New Session";
 
-        // Get resetSession return value and update new session ID
         const newSessionId = await resetSession(finalSessionName);
         if (newSessionId) {
           setCurrentSessionId(newSessionId);
-          // Show share modal after creating new session
+
           setTimeout(() => {
             setShowShareModal(true);
           }, 500);
@@ -103,10 +80,21 @@ const SessionPage: React.FC = () => {
     }
   };
 
-  // Toggle button handler
-  const toggleAllCards = () => {
+  const toggleAllCards = useCallback(() => {
     setShowAllCards((prev) => !prev);
-  };
+  }, [setShowAllCards]);
+
+  useEffect(() => {
+    if (session?.id && session.id !== currentSessionId) {
+      setCurrentSessionId(session.id);
+    }
+  }, [session?.id, currentSessionId]);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/");
+    }
+  }, [user, loading, navigate]);
 
   // Loading display
   if (loading) {

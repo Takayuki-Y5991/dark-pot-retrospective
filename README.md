@@ -1,54 +1,85 @@
-# React + TypeScript + Vite
+# Dark Pot - Team Retrospective Tool
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Dark Pot is a modern, real-time team retrospective tool that makes retrospective meetings more engaging and effective. It facilitates anonymous feedback collection and structured discussion through a peer-to-peer connection system.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Anonymous Card Submission**: Team members can submit feedback cards anonymously, encouraging honest and open communication
+- **Real-time Collaboration**: Uses peer-to-peer connections for instant updates across all participants
+- **Random Topic Selection**: Host can randomly select cards for discussion, maintaining an unbiased flow
+- **Session Management**:
+  - Create new retrospective sessions
+  - Join existing sessions via session ID
+  - Reset sessions for recurring meetings
+- **Role-based Access**:
+  - Host controls: Topic selection, session reset, view all cards
+  - Participant features: Anonymous card submission, view own cards
+- **Modern UI/UX**:
+  - Responsive design for all devices
+  - Smooth animations and transitions
+  - Clean, intuitive interface
 
-## Expanding the ESLint configuration
+## Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- React + TypeScript
+- Vite for build tooling
+- Framer Motion for animations
+- Peer.js for P2P connections
+- Tailwind CSS for styling
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+## Getting Started
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Usage
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+1. **Create a Session**:
+   - Click "Create New Session"
+   - Enter a session name
+   - Share the generated session ID with your team
+
+2. **Join a Session**:
+   - Click "Join Existing Session"
+   - Enter the session ID shared by the host
+   - Start participating in the retrospective
+
+3. **During the Session**:
+   - Submit feedback cards anonymously
+   - Host can randomly select topics for discussion
+   - View your submitted cards
+   - Host can view all submitted cards
+   - Use the share button to invite more participants
+
+4. **Start a New Session**:
+   - Host can reset the session
+   - All cards will be cleared
+   - New session ID will be generated
+
+## Demo
+ ※ Split due to Git size conversion constraints
+- [Step1](./docs/part1.gif)
+- [Step2](./docs/part2.gif)
+- [Step3](./docs/part3.gif)
+
+## Development
+
+- Build for production:
+  ```bash
+  npm run build
+  ```
+- Preview production build:
+  ```bash
+  npm run preview
+  ```
+
+## License
+
+© 2025 Dark Pot Retrospective Tool. All rights reserved.

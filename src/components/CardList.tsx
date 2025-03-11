@@ -1,6 +1,7 @@
 import { usePeer } from "@/contexts/PeerContext";
 import { Card } from "@/types";
 import { motion } from "framer-motion";
+import { useCallback } from "react";
 
 interface CardListProps {
   cards: Card[];
@@ -11,15 +12,18 @@ const CardList = ({ cards, isMyCards }: CardListProps) => {
   const { user, deleteCard } = usePeer();
 
   // Card deletion handler
-  const handleDeleteCard = async (cardId: string) => {
-    if (window.confirm("Are you sure you want to delete this topic?")) {
-      try {
-        await deleteCard(cardId);
-      } catch {
-        alert("Failed to delete the topic");
+  const handleDeleteCard = useCallback(
+    async (cardId: string) => {
+      if (window.confirm("Are you sure you want to delete this topic?")) {
+        try {
+          await deleteCard(cardId);
+        } catch {
+          alert("Failed to delete the topic");
+        }
       }
-    }
-  };
+    },
+    [deleteCard]
+  );
 
   if (cards.length === 0) {
     return (
